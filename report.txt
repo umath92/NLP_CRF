@@ -1,0 +1,136 @@
+Assignment 3 Report
+
+Name: Utsav Mathur
+USCID: 4691572968
+
+1. What I turned in, what it does, and how to run it
+
+	Note for the grader:
+		I used the functions provided in hw3_corpus_tool.py to create create_baseline_features.py and create_advanced_features.py. I didn't modify TA's (core) code.
+
+	Files included:
+		-createFeature.py
+		-create_baseline_features.py
+		-swbdDAMSL.crfsuite.baseline.model
+		-swbdDAMSL.crfsuite.baseline.out
+		-create_advanced_features.py
+		-swbdDAMSL.crfsuite.advanced.model
+		-swbdDAMSL.crfsuite.advanced.out
+		-report.txt
+
+	What do the files do:
+
+	Baseline
+		-createFeature.py: sciprt to run 'create_baseline_features.py' or 'create_advanced_features.py', when you have multiple files in a directory.
+		-create_baseline_features.py: Creates baseline features file for any file (train or test)
+		-Runs internally from 'createFeature.py'. If you need to run it seperate, run it as 'python3 create_baseline_features.py [fileName]'. The features will print on the console.
+		-swbdDAMSL.crfsuite.baseline.model: model file for baseline features.
+		-swbdDAMSL.crfsuite.baseline.out: output file for baseline features
+
+	Advanced
+		-createFeature.py: sciprt to run 'create_baseline_features.py' or 'create_advanced_features.py' when you have multiple files in a directory.
+		-create_advanced_features.py: Creates advaned features file for any file (train or test)
+		-Runs internally from 'createFeature.py'. If you need to run it seperate, run it as 'python3 create_advanced_features.py [fileName]'. The features will print on the console.
+		-swbdDAMSL.crfsuite.advanced.model: model file for advanced features.
+		-swbdDAMSL.crfsuite.baseline.out: output file for advanced features
+
+	How to run them:
+
+	-createFeature.py: python3 createFeature.py <directory of files> <baseline|advanced> > <out file>
+	-./crfsuite learn -m <model file> <training file produced from createFeature.py>
+	-./crfsuite tag -m <model file> <testing file produced from createFeature.py> > <predictions file>
+
+	Specifically we have,
+
+	Baseline feature set:
+		-python3 createFeature.py data/train/ baseline > train.baseline
+		-python3 createFeature.py data/test/ baseline > test.baseline
+		-./crfsuite learn -m swbdDAMSL.crfsuite.baseline.model train.baseline
+		-./crfsuite tag -m swbdDAMSL.crfsuite.baseline.model test.baseline > swbdDAMSL.crfsuite.baseline.out
+
+	Advanced feature set:
+		-python3 createFeature.py data/train/ advanced > train.advanced
+		-python3 createFeature.py data/test/ advanced > test.advanced
+		-./crfsuite learn -m swbdDAMSL.crfsuite.advanced.model train.advanced
+		-./crfsuite tag -m swbdDAMSL.crfsuite.advanced.model test.advanced > swbdDAMSL.crfsuite.advanced.out
+
+2. How I evaluated my baseline and advanced features
+
+	I evaluated my baseline and advanced features using 75/25 split and 3-fold cross validation (using crfsuite); 75% of the data was used for training and 25% for testing. The accuracies for the 75/25 split and the cross validation are mentioned in the end of this report. My data is not exactly split 75/25 its more like 75.4/24.6, but this shouldn't effect the accuracy. I did the loose split for convenience.
+
+	(1) 75/25 split:
+
+	I used '-qt' in command line argument for crfsuit to automatically give the accuracy.
+
+	Baseline:
+
+		-python3 createFeature.py data/train/ baseline > train.baseline
+		-head -153972 train.baseline > train.75
+		-sed -e '1,153972d' train.baseline > test.25
+		-./crfsuite learn -m swbdDAMSL.crfsuite.baseline.model.75 train.75
+		-./crfsuite tag -qt -m swbdDAMSL.crfsuite.baseline.model.75 test.25
+
+
+	Advanced:
+
+		-python3 createFeature.py data/train/ advanced > train.advanced
+		-head -153972 train.advanced > train.adv.75
+		-sed -e '1,153972d' train.advanced > test.adv.25
+		-./crfsuite learn -m swbdDAMSL.crfsuite.advanced.model.75 train.adv.75
+		-./crfsuite tag -qt -m swbdDAMSL.crfsuite.advanced.model.75 test.adv.25
+
+
+	(2) 3-fold cross validation:
+
+	Taking the value at the last iteration of the 3 folds and averaging them out gave my 3-fold cross validation accuracy.
+
+	Baseline:
+		-python3 createFeature.py data/train/ baseline > train.baseline
+		-./crfsuite learn -g3 -x train.baseline > baseline.3fold.out
+
+	Advanced:
+		-python3 createFeature.py data/train/ advanced > train.advanced
+		-./crfsuite learn -g3 -x train.advanced > advanced.3fold.out
+
+
+3. Description of advanced feature set
+
+	The following tags were added in advanced features in additions to baseline features:
+		-Speaker name 
+		-Same speaker (in addition to baseline change of speaker ) 
+		-question and answer. Whenever I encounter\ a "?" in the token, I include a tag TAG_question and whenever I couldn't find a "?" I check if the previous one was a question, if so, I added an answer tag, TAG_answer.
+		-For empty POS (eg, for cases where text is like <Laughter>), I added TOKEN_Empty and POS_Empty as two features.
+		-If a token or pos is empty, I've included TOKEN_ and POS_ respectively.
+		-Included all the tokens again, as they increased the accuracy by 0-2%.
+		-bigrams and trigrams.They increase the accuracy by 0-2%.
+
+4. How I developed my advanced feature set
+
+	-Speaker name: A tag for the speaker was added (A or B)
+	-Same speaker: if the speaker didn't change from the previous iterations I added a tag for it. ('1' for change of speaker and '0' for same speaker)
+	-Question and answer: If an utterance contained a "?" a question tag was added. If an utterance didn't contain a "?" and the previous utterance did, then an answer tag was added. (TAG_question and TAG_answer)
+	-Empty POS: Tags were added for token and pos where the POS was None. (TOKEN_Empty and POS_Empty)
+	-If token was an empty string then TOKEN_ was added. If pos was an empty string then POS_ was added. 
+	-Included all the tokens again, but this time with I didn't add TOKEN_ before a word. This increased the accuracy by 0-2%.
+	-Included bigrams and trigrams of tokens. This increased the accuracy by 0-2%. (BIGRAM_W1_W2 and TRIGRAM_W1_W2_W3)
+
+	All others except the last two increased the accuracy by ~0-0.5%.
+
+5. Results
+
+	3-fold cross validation  (averaging the value in the last iteration aross all folds):
+
+		Accuracy of baseline features: 72.49% 
+		Accuracy of advanced features: 76.12% 
+
+	Note: The advanced feature line sees an increase in accuracy by ~4%.
+
+	75/25 split:
+
+		Accuracy of baseline features: 72.52% 
+		Accuracy of advanced features: 75.65% 
+
+
+6. Additional information about the assignment
+
+	Not applicable
